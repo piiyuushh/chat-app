@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="P logo.png" type="icon">
+    <title>TextTalk</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            background-color: #f7f7f7;
+        }
+        #chat-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 600px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        #chat {
+            border: 1px solid #ccc; 
+            padding: 10px; 
+            height: 400px; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column;
+        }
+        .message {
+            max-width: 70%;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 8px;
+            display: inline-block;
+            word-wrap: break-word;
+        }
+        .message.sent {
+            align-self: flex-end;
+            background-color: #DCF8C6;
+        }
+        .message.received {
+            align-self: flex-start;
+            background-color: #E5E5EA;
+        }
+        #message-container {
+            display: flex;
+            margin-top: 10px;
+        }
+        #message {
+            width: 80%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #send {
+            padding: 10px;
+            margin-left: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #send:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <h1>TextTalk</h1>
+        <div id="chat"></div>
+        <div id="message-container">
+            <input type="text" id="message" placeholder="Type a message">
+            <button id="send">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chat = document.getElementById('chat');
+        const messageInput = document.getElementById('message');
+        const sendButton = document.getElementById('send');
+        let userId = null;  // To store this user's ID
+
+        const ws = new WebSocket('ws://localhost:3000');
+
+        // Append message to the chat area
+        function appendMessage(text, type) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message', type);  // Type is either 'sent' or 'received'
+            msgDiv.textContent = text;
+            chat.appendChild(msgDiv);
+            chat.scrollTop = chat.scrollHeight;  // Auto-scroll to the bottom
+        }
+
+        // Handle messages from the server
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data); // Parse the incoming message
+
+                // If the server sends the ID, store it
+                if (data.type === 'id') {
+                    userId = data.id;
+                    console.log(`Your user ID: ${userId}`);
+                }
+
+                // Handle chat messages
+                if (data.type === 'message') {
+                    const messageType = data.senderId === userId ? 'sent' : 'received';
+                    appendMessage(data.text, messageType);
+                }
+            } catch (err) {
+                console.error('Error parsing message:', err);
+            }
+        };
+
+        // When the user sends a message
+        sendButton.onclick = () => {
+            if (messageInput.value.trim()) {
+                const message = messageInput.value;
+                const messageObj = { text: message };  // Create a message object
+                ws.send(JSON.stringify(messageObj));  // Serialize the message object as a string
+                messageInput.value = '';  // Clear the input field
+            }
+        };
+
+        // Enable sending with the Enter key
+        messageInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                sendButton.click();
+            }
+        });
+    </script>
+</body>
+</html>
