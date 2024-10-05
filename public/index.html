@@ -1,144 +1,196 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Afacad+Flux:wght@100..1000&display=swap" rel="stylesheet">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="P logo.png" type="icon">
-    <title>TextTalk</title>
+    <title>Real-Time Chat</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            margin: 0; 
-            background-color: #f7f7f7;
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f3f4f6;
+            font-family: 'Afacad Flux', sans-serif;
+        }
+        #username-modal {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         #chat-container {
-            display: flex;
+            display: none;
             flex-direction: column;
             width: 100%;
             max-width: 600px;
+            height: 90vh;
             background-color: white;
-            border-radius: 8px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
             padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         #chat {
-            border: 1px solid #ccc; 
-            padding: 10px; 
-            height: 400px; 
-            overflow-y: auto; 
-            display: flex; 
-            flex-direction: column;
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
         }
         .message {
-            max-width: 70%;
-            margin: 5px 0;
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+        .message.sender {
+            background-color: green;
+            color: white;
+            align-self: flex-end;
+        }
+        .message.receiver {
+            background-color: lightblue;
+            color: black;
+            align-self: flex-start;
+        }
+        .message .content {
+            max-width: 75%;
+        }
+        .message .username {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .message .text {
+            background-color: #e5e7eb;
             padding: 10px;
-            border-radius: 8px;
-            display: inline-block;
+            border-radius: 10px;
+            font-size: 14px;
             word-wrap: break-word;
         }
-        .message.sent {
-            align-self: flex-end;
-            background-color: #165be4;
-            color: white;
-        }
-        .message.received {
-            align-self: flex-start;
-            background-color: #419048;
-            color: white;
-        }
-        #message-container {
-            display: flex;
-            margin-top: 10px;
-        }
-        #message {
-            width: 80%;
+        #message-input {
+            width: calc(100% - 20px);
             padding: 10px;
-            border: 1px solid #ccc;
+            border: 1px solid #d1d5db;
             border-radius: 5px;
+            margin-bottom: 10px;
         }
-        #send {
+        #send-button {
+            width: 100%;
             padding: 10px;
-            margin-left: 10px;
-            background-color: #007bff;
+            background-color: #3b82f6;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
         }
-        #send:hover {
-            background-color: #0056b3;
+        #send-button:hover {
+            background-color: #2563eb;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .message.sender {
+            background-color: green;
+            color: white;
+            align-self: flex-end;
+        }
+        .message.receiver {
+            background-color: lightblue;
+            color: black;
+            align-self: flex-start;
         }
     </style>
 </head>
 <body>
-    <div id="chat-container">
-        <h1>TextTalk</h1>
-        <div id="chat"></div>
-        <div id="message-container">
-            <input type="text" id="message" placeholder="Type a message">
-            <button id="send">Send</button>
+
+    <!-- Username input modal -->
+    <div id="username-modal">
+        <div class="modal-content">
+            <h2>Enter Your Username</h2>
+            <input type="text" id="username-input" placeholder="Username" style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #d1d5db;">
+            <button id="username-submit" style="width: 100%; padding: 10px; background-color: #3b82f6; color: white; border: none; border-radius: 5px;">Join Chat</button>
         </div>
     </div>
 
+    <!-- Main chat container -->
+    <div id="chat-container">
+        <h1 style="text-align: center; font-weight: bold; font-size: 24px; margin-bottom: 20px;">Chat App</h1>
+
+        <!-- Chat Box -->
+        <div id="chat">
+            <!-- Messages will appear here -->
+        </div>
+
+        <!-- Input Box -->
+        <input id="message-input" type="text" placeholder="Type a message...">
+        <button id="send-button">Send</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
     <script>
-        const chat = document.getElementById('chat');
-        const messageInput = document.getElementById('message');
-        const sendButton = document.getElementById('send');
-        let userId = null;  // To store this user's ID
+        const socket = io();
+        let username = '';
 
-        const ws = new WebSocket('ws://localhost:3000');
-
-        // Append message to the chat area
-        function appendMessage(text, type) {
-            const msgDiv = document.createElement('div');
-            msgDiv.classList.add('message', type);  // Type is either 'sent' or 'received'
-            msgDiv.textContent = text;
-            chat.appendChild(msgDiv);
-            chat.scrollTop = chat.scrollHeight;  // Auto-scroll to the bottom
-        }
-
-        // Handle messages from the server
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data); // Parse the incoming message
-
-                // If the server sends the ID, store it
-                if (data.type === 'id') {
-                    userId = data.id;
-                    console.log(`Your user ID: ${userId}`);
-                }
-
-                // Handle chat messages
-                if (data.type === 'message') {
-                    const messageType = data.senderId === userId ? 'sent' : 'received';
-                    appendMessage(data.text, messageType);
-                }
-            } catch (err) {
-                console.error('Error parsing message:', err);
-            }
-        };
-
-        // When the user sends a message
-        sendButton.onclick = () => {
-            if (messageInput.value.trim()) {
-                const message = messageInput.value;
-                const messageObj = { text: message };  // Create a message object
-                ws.send(JSON.stringify(messageObj));  // Serialize the message object as a string
-                messageInput.value = '';  // Clear the input field
-            }
-        };
-
-        // Enable sending with the Enter key
-        messageInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                sendButton.click();
+        // Handle username submission
+        document.getElementById('username-submit').addEventListener('click', () => {
+            username = document.getElementById('username-input').value;
+            if (username) {
+                document.getElementById('username-modal').style.display = 'none';
+                document.getElementById('chat-container').style.display = 'flex';
+                socket.emit('user-joined', username);
             }
         });
+
+        const chat = document.getElementById('chat');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+
+        // Handle sending messages
+        sendButton.addEventListener('click', () => {
+            const message = messageInput.value;
+            if (message) {
+                socket.emit('chat-message', { username, message });
+                messageInput.value = '';
+            }
+        });
+
+        // Display chat messages
+        socket.on('chat-message', (data) => {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            
+            messageElement.innerHTML = `
+                <div class="content">
+                    <div class="username">${data.username}</div>
+                    <div class="text">${data.message}</div>
+                </div>
+            `;
+            chat.appendChild(messageElement);
+            chat.scrollTop = chat.scrollHeight;
+        });
+
+        // Notify when a user joins
+        socket.on('user-joined', (username) => {
+            const joinMessage = document.createElement('div');
+            joinMessage.classList.add('text-gray-500', 'text-sm', 'mb-4');
+            joinMessage.textContent = `${username} joined the chat`;
+            chat.appendChild(joinMessage);
+        });
     </script>
+    <script src="script.js"></script>
 </body>
 </html>

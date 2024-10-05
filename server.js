@@ -1,48 +1,42 @@
 const express = require('express');
 const http = require('http');
-const WebSocket = require('ws');
-const { v4: uuidv4 } = require('uuid');
+const socketIO = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
+const io = socketIO(server);
 
-// Serve the index.html file
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Create WebSocket server
-const wss = new WebSocket.Server({ server });
+let users = {};
 
-wss.on('connection', (ws) => {
-    const userId = uuidv4();  // Generate a unique ID for each client
-    console.log(`New client connected with ID: ${userId}`);
-
-    // Send a message back to the client with its unique ID
-    ws.send(JSON.stringify({ type: 'id', id: userId }));
-
-    // Broadcast message to all clients
-    ws.on('message', (message) => {
-        try {
-            const messageObj = JSON.parse(message);  // Parse incoming message
-            console.log(`Received message: ${messageObj.text}`);
-
-            // Broadcast the message to all clients with sender's ID
-            wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({ type: 'message', senderId: userId, text: messageObj.text }));
-                }
-            });
-        } catch (err) {
-            console.error('Error parsing message:', err);
-        }
+io.on('connection', (socket) => {
+    // Handle user joining with a username
+    socket.on('user-joined', (username) => {
+        users[socket.id] = username;
+        socket.broadcast.emit('user-joined', username);
     });
 
-    // Handle client disconnection
-    ws.on('close', () => {
-        console.log(`Client with ID: ${userId} disconnected`);
+    // Handle sending of messages
+    socket.on('chat-message', (data) => {
+        io.emit('chat-message', {
+            username: users[socket.id], // Attach the username
+            message: data.message
+        });
+    });
+
+    // Handle disconnects
+    socket.on('disconnect', () => {
+        const username = users[socket.id];
+        if (username) {
+            socket.broadcast.emit('user-joined', `${username} left the chat`);
+            delete users[socket.id];
+        }
     });
 });
 
-// Start the server
-server.listen(3000, () => {
-    console.log('Server is listening on port 3000');
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });

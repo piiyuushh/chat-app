@@ -1,3 +1,2 @@
-node_modules
-DS_Store
-P logo.png
+.DS_Store
+logo.png

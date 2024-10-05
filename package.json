@@ -12,6 +12,7 @@
   "dependencies": {
     "express": "^4.21.0",
     "nodemon": "^3.1.7",
+    "socket.io": "^4.8.0",
     "uuid": "^10.0.0",
     "ws": "^8.18.0"
   },
